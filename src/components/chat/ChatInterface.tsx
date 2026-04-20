@@ -3,12 +3,12 @@
 import { useState, useRef, useEffect } from 'react'
 import { Loader2, Send, Zap } from 'lucide-react'
 import { MessageBubble } from './MessageBubble'
-import type { Message } from './MessageBubble'
+import type { Message, ToolCallData } from './MessageBubble'
 
 const SUGGESTIONS = [
   'Explain how the Model Context Protocol works',
-  'What is the difference between a tool and a resource in MCP?',
-  'How does streaming work in a Next.js API route?',
+  'Save a note called "MCP basics" with a one-sentence summary of what MCP is',
+  'What notes have I saved so far?',
   'Write a TypeScript function that fetches JSON from an API',
 ]
 
@@ -42,9 +42,10 @@ export function ChatInterface() {
     }
 
     const assistantMessage: Message = {
-      id:      crypto.randomUUID(),
-      role:    'assistant',
-      content: '',
+      id:        crypto.randomUUID(),
+      role:      'assistant',
+      content:   '',
+      toolCalls: [],
     }
 
     setMessages(prev => [...prev, userMessage, assistantMessage])
@@ -81,7 +82,50 @@ export function ChatInterface() {
           if (data === '[DONE]') break
 
           try {
-            const token = JSON.parse(data).choices?.[0]?.delta?.content ?? ''
+            const parsed = JSON.parse(data)
+
+            // ── Tool call started ──────────────────────────────────────
+            if (parsed.type === 'tool_call') {
+              const toolCall: ToolCallData = {
+                id:   parsed.tool.id,
+                name: parsed.tool.name,
+                args: parsed.tool.args,
+              }
+              setMessages(prev =>
+                prev.map(msg =>
+                  msg.id === assistantMessage.id
+                    ? { ...msg, toolCalls: [...(msg.toolCalls ?? []), toolCall] }
+                    : msg
+                )
+              )
+              continue
+            }
+
+            // ── Tool result arrived ────────────────────────────────────
+            if (parsed.type === 'tool_result') {
+              setMessages(prev =>
+                prev.map(msg =>
+                  msg.id === assistantMessage.id
+                    ? {
+                        ...msg,
+                        toolCalls: (msg.toolCalls ?? []).map(tc =>
+                          tc.id === parsed.tool.id
+                            ? {
+                                ...tc,
+                                result:  parsed.tool.content,
+                                isError: parsed.tool.isError,
+                              }
+                            : tc
+                        ),
+                      }
+                    : msg
+                )
+              )
+              continue
+            }
+
+            // ── Regular streaming text chunk ───────────────────────────
+            const token = parsed.choices?.[0]?.delta?.content ?? ''
             if (!token) continue
 
             setMessages(prev =>
@@ -184,14 +228,12 @@ function EmptyState({
       <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
         <Zap className="h-6 w-6 text-primary" />
       </div>
-
       <div className="text-center">
         <h2 className="text-lg font-semibold text-foreground">How can I help?</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Ask a question or pick a suggestion below
         </p>
       </div>
-
       <div className="grid w-full max-w-lg grid-cols-1 gap-2 sm:grid-cols-2">
         {SUGGESTIONS.map(s => (
           <button

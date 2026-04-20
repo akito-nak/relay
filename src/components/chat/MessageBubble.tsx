@@ -1,14 +1,19 @@
 import { Zap } from 'lucide-react'
 import { MarkdownContent } from './MarkdownContent'
+import { ToolCallDisplay } from './ToolCallDisplay'
+import type { ToolCallData } from './ToolCallDisplay'
+
+export type { ToolCallData }
 
 export interface Message {
-  id:      string
-  role:    'user' | 'assistant'
-  content: string
+  id:        string
+  role:      'user' | 'assistant'
+  content:   string
+  toolCalls?: ToolCallData[]
 }
 
 interface MessageBubbleProps {
-  message:     Message
+  message:      Message
   isStreaming?: boolean
 }
 
@@ -23,6 +28,12 @@ export function MessageBubble({ message, isStreaming = false }: MessageBubblePro
     )
   }
 
+  const hasToolCalls = Boolean(message.toolCalls?.length)
+  const hasContent   = message.content.length > 0
+  const allToolsDone = !hasToolCalls ||
+    message.toolCalls!.every(tc => tc.result !== undefined)
+  const showDots     = isStreaming && !hasContent && allToolsDone
+
   return (
     <div className="flex gap-3">
       <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10">
@@ -30,9 +41,17 @@ export function MessageBubble({ message, isStreaming = false }: MessageBubblePro
       </div>
 
       <div className="min-w-0 flex-1 pt-0.5 text-sm text-foreground">
-        {!message.content && isStreaming ? (
-          <StreamingDots />
-        ) : (
+        {hasToolCalls && (
+          <div className="mb-2 space-y-1">
+            {message.toolCalls!.map(tc => (
+              <ToolCallDisplay key={tc.id} toolCall={tc} />
+            ))}
+          </div>
+        )}
+
+        {showDots && <StreamingDots />}
+
+        {hasContent && (
           <>
             <MarkdownContent content={message.content} />
             {isStreaming && (
