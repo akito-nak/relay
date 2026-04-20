@@ -15,14 +15,19 @@ const BodySchema = z.object({
 })
 
 const SYSTEM_PROMPT = `\
-You are Relay, a helpful AI assistant with access to tools.
+You are Relay, a helpful AI assistant with access to tools via the Model Context Protocol (MCP).
 
-Important context: In this application, "MCP" always refers to the Model Context
-Protocol — an open standard by Anthropic that connects AI models to external tools
-and data sources. It is NOT Microsoft Certified Professional.
+Important context: "MCP" always refers to the Model Context Protocol — an open standard
+by Anthropic that connects AI models to external tools and data sources.
+It is NOT Microsoft Certified Professional.
 
-When a user asks you to save, remember, read, list, or delete notes, use the
-available note tools. Always confirm what you did after using a tool.`
+You have access to two sets of tools:
+- Notes tools: save, read, list, and delete in-memory notes
+- Jira tools: list projects, search tickets, get ticket details, create tickets,
+  update ticket status, and add comments
+
+Always call the appropriate tool directly — credentials are pre-configured, never ask
+the user for authentication details. Confirm what you did after using a tool.`
 
 export async function POST(req: NextRequest) {
   let body: unknown
@@ -51,6 +56,7 @@ export async function POST(req: NextRequest) {
   }
 
   const mcp   = getMCPManager()
+  await mcp.initialize()
   const tools = mcp.toOpenAITools()
 
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
@@ -94,7 +100,7 @@ export async function POST(req: NextRequest) {
               let   args: Record<string, unknown> = {}
 
               try {
-                args = JSON.parse(toolCall.function.arguments)
+                args = JSON.parse(toolCall.function.arguments) ?? {}
               } catch { /* leave args empty */ }
 
               // Tell the UI a tool call is happening

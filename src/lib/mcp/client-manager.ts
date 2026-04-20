@@ -43,13 +43,33 @@ class MCPClientManager {
       console.error('[MCP] Failed to connect notes server:', err)
     }
 
+    const jiraPath = join(
+      process.cwd(),
+      'packages', 'jira-server', 'dist', 'index.js'
+    )
+
+    try {
+      await this.connectServer('jira', jiraPath, {
+        JIRA_BASE_URL:  process.env.JIRA_BASE_URL  ?? '',
+        JIRA_EMAIL:     process.env.JIRA_EMAIL      ?? '',
+        JIRA_API_TOKEN: process.env.JIRA_API_TOKEN  ?? '',
+      })
+    } catch (err) {
+      console.error('[MCP] Failed to connect jira server:', err)
+    }
+
     this.ready = true
   }
 
-  private async connectServer(name: string, scriptPath: string): Promise<void> {
+  private async connectServer(
+    name:       string,
+    scriptPath: string,
+    env:        Record<string, string> = {}
+  ): Promise<void> {
     const transport = new StdioClientTransport({
       command: 'node',
       args:    [scriptPath],
+      env:     { ...(process.env as Record<string, string>), ...env },
     })
 
     const client = new Client(

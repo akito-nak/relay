@@ -14,7 +14,7 @@ export interface ToolCallData {
 export function ToolCallDisplay({ toolCall }: { toolCall: ToolCallData }) {
   const [expanded, setExpanded] = useState(false)
   const hasResult = toolCall.result !== undefined
-  const hasArgs   = Object.keys(toolCall.args).length > 0
+  const hasArgs   = Object.keys(toolCall.args ?? {}).length > 0
 
   return (
     <div className="my-2 overflow-hidden rounded-lg border border-border bg-muted/30 text-xs">
