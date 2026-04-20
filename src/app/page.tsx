@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Zap } from 'lucide-react'
 import { ChatInterface } from '@/components/chat/ChatInterface'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
 
 export const metadata: Metadata = {
   title: 'Chat',
@@ -25,20 +26,20 @@ export default function HomePage() {
     <div className="flex h-screen flex-col bg-background">
       <header className="flex shrink-0 items-center justify-between border-b border-border px-6 py-3">
         <div className="flex items-center gap-2">
-          <Zap className="h-5 w-5 text-primary" />
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
+            <Zap className="h-4 w-4 text-primary" />
+          </div>
           <span className="font-semibold tracking-tight text-foreground">
             Relay
           </span>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
             {providerLabel}
           </span>
-          <span
-            className="h-2 w-2 rounded-full bg-green-500"
-            title="LLM connected"
-          />
+          <div className="h-4 w-px bg-border" />
+          <ThemeToggle />
         </div>
       </header>
 
