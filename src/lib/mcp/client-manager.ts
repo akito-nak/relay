@@ -58,6 +58,19 @@ class MCPClientManager {
       console.error('[MCP] Failed to connect jira server:', err)
     }
 
+    const githubPath = join(
+      process.cwd(),
+      'node_modules', '@modelcontextprotocol', 'server-github', 'dist', 'index.js'
+    )
+
+    try {
+      await this.connectServer('github', githubPath, {
+        GITHUB_PERSONAL_ACCESS_TOKEN: process.env.GITHUB_PERSONAL_ACCESS_TOKEN ?? '',
+      })
+    } catch (err) {
+      console.error('[MCP] Failed to connect github server:', err)
+    }
+
     this.ready = true
   }
 
