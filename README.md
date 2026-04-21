@@ -317,7 +317,7 @@ If you want to see how production MCP servers are built, these are excellent ref
 |---|---|---|
 | 1 | ✅ Complete | Next.js scaffold, streaming chat, LLM abstraction |
 | 2 | ✅ Complete | Notes MCP server, tool call UI |
-| 3 | 🔨 In progress | Jira MCP server |
-| 4 | 📋 Planned | GitHub MCP server |
-| 5 | 📋 Planned | Slack bot |
-| 6 | 📋 Planned | Tests, deployment, portfolio polish |
+| 3 | ✅ Complete | Jira MCP server |
+| 4 | ✅ Complete | GitHub MCP server |
+| 5 | ✅ Complete | Slack bot |
+| 6 | 🔨 In progress | Tests, deployment, portfolio polish |
