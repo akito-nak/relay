@@ -1,13 +1,13 @@
-# Relay — Specification & Tutorial
+# Relay — Technical Specification
 
-> **A hands-on, phased guide to building a real-world AI + MCP application with Jira, Slack, and GitHub integration.**
+> **A production-quality AI workspace assistant connecting Jira, Slack, and GitHub via the Model Context Protocol.**
 
 ---
 
 ## Table of Contents
 
 1. [Overview](#1-overview)
-2. [Goals & Learning Outcomes](#2-goals--learning-outcomes)
+2. [Goals & Architecture Decisions](#2-goals--architecture-decisions)
 3. [Architecture Overview](#3-architecture-overview)
 4. [Technology Stack](#4-technology-stack)
    - 4.1 [Frontend](#41-frontend)
@@ -16,13 +16,13 @@
    - 4.4 [MCP Layer](#44-mcp-layer)
    - 4.5 [External Services](#45-external-services)
    - 4.6 [Testing](#46-testing)
-5. [What Is MCP? (Tutorial)](#5-what-is-mcp-tutorial)
+5. [What Is MCP?](#5-what-is-mcp)
    - 5.1 [The Problem MCP Solves](#51-the-problem-mcp-solves)
    - 5.2 [Core Concepts & Glossary](#52-core-concepts--glossary)
    - 5.3 [How MCP Works — Step by Step](#53-how-mcp-works--step-by-step)
    - 5.4 [Transport Mechanisms](#54-transport-mechanisms)
    - 5.5 [MCP vs Function Calling](#55-mcp-vs-function-calling)
-6. [Real-World MCP Servers to Learn From](#6-real-world-mcp-servers-to-learn-from)
+6. [MCP Ecosystem Reference](#6-mcp-ecosystem-reference)
 7. [Services & Infrastructure](#7-services--infrastructure)
    - 7.1 [Why Groq?](#71-why-groq)
    - 7.2 [LLM Switching Strategy](#72-llm-switching-strategy)
@@ -33,7 +33,7 @@
 8. [Application Features](#8-application-features)
 9. [Phased Build Plan](#9-phased-build-plan)
    - Phase 1: [Foundation & Chat UI](#phase-1-foundation--chat-ui)
-   - Phase 2: [Your First MCP Server](#phase-2-your-first-mcp-server)
+   - Phase 2: [Notes MCP Server](#phase-2-notes-mcp-server)
    - Phase 3: [Jira MCP Server](#phase-3-jira-mcp-server)
    - Phase 4: [GitHub MCP Server](#phase-4-github-mcp-server)
    - Phase 5: [Slack Bot Integration](#phase-5-slack-bot-integration)
@@ -48,30 +48,21 @@
 
 ## 1. Overview
 
-This project is a **learning-first AI application** that teaches you how to build with the **Model Context Protocol (MCP)** — the emerging standard for connecting AI language models to external tools and data. By building this app, you will understand not just how to use AI, but how to architect systems where AI acts as an intelligent orchestrator of real-world services like Jira, Slack, and GitHub.
+Relay is a **chat-driven workspace assistant** built on the **Model Context Protocol (MCP)** — the open standard for connecting AI language models to external tools and data. It is a web UI where you converse with an AI that can read and write Jira tickets, browse GitHub repositories, post to Slack, and manage notes — all through natural language, powered entirely by free-tier services.
 
-The application is a **chat-driven workspace assistant**: a web UI where you converse with an AI that can read and write Jira tickets, post to Slack, browse GitHub repositories, and more — powered entirely by free services.
-
-This spec serves a dual purpose:
-- **Technical specification** for what to build and in what order
-- **Tutorial** that explains MCP concepts, terms, and design decisions as they come up
-
-> **AI Guidance:** When building each phase, read the phase section in full before writing any code. The concepts section explains *why* before each *how*.
+This document is the technical specification covering architecture, design decisions, infrastructure, and implementation details for each phase of the project.
 
 ---
 
-## 2. Goals & Learning Outcomes
+## 2. Goals & Architecture Decisions
 
-By the end of this project, you will be able to:
+**Project goals:**
 
-- [ ] Explain what MCP is, how it works, and why it matters
-- [ ] Build a custom MCP server from scratch in TypeScript
-- [ ] Connect an MCP server to an LLM (any provider)
-- [ ] Build a Next.js application with streaming AI responses
-- [ ] Design an LLM provider abstraction so you can switch models in one config change
-- [ ] Integrate Jira, Slack, and GitHub via MCP tools
-- [ ] Write unit and integration tests for AI-powered applications
-- [ ] Discuss real-world MCP architecture in a job interview
+- Build a fully functional AI assistant that operates across Jira, GitHub, Slack, and a Notes store via MCP
+- Implement a provider-agnostic LLM layer switchable via a single environment variable
+- Use the official Anthropic MCP SDK for both custom servers (Notes, Jira) and official servers (GitHub)
+- Keep all infrastructure on free tiers: Groq, Jira Cloud, GitHub, Slack
+- Maintain unit test coverage across the LLM abstraction layer and MCP client manager
 
 ---
 
@@ -147,7 +138,7 @@ By the end of this project, you will be able to:
 
 | Decision | Choice | Reason |
 |---|---|---|
-| Single monorepo | Yes (Next.js) | Simpler for learning; API routes live alongside UI |
+| Single monorepo | Yes (Next.js) | API routes live alongside UI; MCP servers in packages/ |
 | MCP transport | stdio (local), HTTP+SSE (Phase 4+) | stdio is easiest to start; HTTP scales to remote servers |
 | LLM provider | Groq (default) | Free tier, fastest response, best tool-call reliability of free options |
 | State management | React Context + SWR | Lightweight; no Redux overhead for this scope |
@@ -196,7 +187,7 @@ By the end of this project, you will be able to:
 - 14,400 requests/day
 - 6,000 tokens/minute
 
-For a learning/personal project, these limits are sufficient. The app will display current usage and gracefully degrade (show a clear error with retry guidance, never silently fail).
+For development and personal use, these limits are sufficient. The app will display current usage and gracefully degrade (show a clear error with retry guidance, never silently fail).
 
 ### 4.4 MCP Layer
 
@@ -204,8 +195,8 @@ For a learning/personal project, these limits are sufficient. The app will displ
 |---|---|
 | `@modelcontextprotocol/sdk` | Official MCP TypeScript SDK — client + server base classes |
 | `@modelcontextprotocol/server-github` | Official GitHub MCP server (Phase 4) |
-| Custom `jira-mcp-server` | We build this in Phase 3 |
-| Custom `notes-mcp-server` | We build this in Phase 2 (learning exercise) |
+| Custom `jira-mcp-server` | Custom server wrapping the Jira Cloud REST API (Phase 3) |
+| Custom `notes-mcp-server` | Custom in-memory notes server (Phase 2) |
 
 ### 4.5 External Services
 
@@ -228,9 +219,7 @@ For a learning/personal project, these limits are sufficient. The app will displ
 
 ---
 
-## 5. What Is MCP? (Tutorial)
-
-> **This section is both specification and tutorial. Read it before writing any MCP-related code.**
+## 5. What Is MCP?
 
 ### 5.1 The Problem MCP Solves
 
@@ -257,14 +246,14 @@ The **host** is the application a user interacts with. It embeds an MCP client a
 #### MCP Client
 The **client** is the protocol implementation inside the host. It connects to servers, discovers their capabilities, and routes LLM tool calls to the appropriate server.
 
-*In this project:* We'll use `@modelcontextprotocol/sdk`'s `Client` class.
+*In Relay:* The MCP client is managed by `src/lib/mcp/client-manager.ts` using `@modelcontextprotocol/sdk`'s `Client` class.
 
 #### MCP Server
 The **server** is a separate process that exposes capabilities. It can be:
 - A local subprocess (stdio transport) — simplest to start
 - A remote HTTP server (HTTP+SSE transport) — production-ready
 
-*In this project:* We'll write two custom servers (Notes in Phase 2, Jira in Phase 3) and use one official server (GitHub in Phase 4).
+*In Relay:* Two custom servers (Notes, Jira) and one official server (GitHub via `@modelcontextprotocol/server-github`).
 
 #### Tools
 **Tools** are functions the LLM can decide to call. They're the main mechanism for taking action.
@@ -409,9 +398,9 @@ MCP uses the same underlying idea (LLM picks a function to call, you execute it)
 
 ---
 
-## 6. Real-World MCP Servers to Learn From
+## 6. MCP Ecosystem Reference
 
-These are production-quality MCP servers you can run, study, and draw inspiration from. Each entry includes what makes it interesting from an architectural standpoint.
+Notable production MCP servers and what makes each architecturally interesting.
 
 ### 1. `@modelcontextprotocol/server-filesystem`
 **What it does:** Exposes your local filesystem as MCP tools and resources. The LLM can read files, write files, list directories, search contents.
@@ -420,7 +409,7 @@ These are production-quality MCP servers you can run, study, and draw inspiratio
 
 **Tools exposed:** `read_file`, `write_file`, `list_directory`, `search_files`, `create_directory`
 
-**Learn from it:** How to implement resources with file:// URIs, how to validate path safety.
+**Notable:** Implements resources with file:// URIs and path safety validation.
 
 ---
 
@@ -431,7 +420,7 @@ These are production-quality MCP servers you can run, study, and draw inspiratio
 
 **Tools exposed:** `get_pull_request`, `list_issues`, `create_issue`, `search_repositories`, `get_file_contents`
 
-**Learn from it:** How to structure tool schemas for CRUD APIs. We'll mirror this pattern for our Jira server.
+**Notable:** Clean schema design for CRUD APIs — the same pattern used in Relay's Jira server.
 
 ---
 
@@ -440,7 +429,7 @@ These are production-quality MCP servers you can run, study, and draw inspiratio
 
 **Why it's interesting:** Exposes database schema as MCP resources (each table is a resource). Enforces read-only access at the SQL level. Shows how to expose structured data safely.
 
-**Learn from it:** Resource URI design (`postgres://table/users`), how to expose schema metadata as resources.
+**Notable:** Resource URI design (`postgres://table/users`) and schema metadata as resources.
 
 ---
 
@@ -449,7 +438,7 @@ These are production-quality MCP servers you can run, study, and draw inspiratio
 
 **Why it's interesting:** Extremely simple — just one tool (`brave_web_search`). Perfect reference for your first server. Also shows API key management via environment variables.
 
-**Learn from it:** Minimal server implementation. Good starting template.
+**Notable:** Minimal server implementation — good reference for single-tool servers.
 
 ---
 
@@ -458,7 +447,7 @@ These are production-quality MCP servers you can run, study, and draw inspiratio
 
 **Why it's interesting:** Tools return multimodal content (screenshots as base64 images). Shows MCP isn't just text. Also illustrates stateful servers — the browser session persists across tool calls.
 
-**Learn from it:** How to return image/binary content. How to manage server-side state across multiple tool calls.
+**Notable:** Returns image/binary content; manages stateful browser sessions across tool calls.
 
 ---
 
@@ -467,14 +456,14 @@ These are production-quality MCP servers you can run, study, and draw inspiratio
 
 **Why it's interesting:** Adds long-term memory to any LLM without RAG complexity. Shows how prompts and tools work together: the server exposes a prompt that tells the LLM how and when to save memories.
 
-**Learn from it:** Prompt design in MCP, in-process state management, JSON file persistence.
+**Notable:** Prompt + tool cooperation for autonomous memory; JSON file persistence.
 
 ---
 
 ### 7. Community: Linear MCP Server
 **What it does:** Connects to Linear (a popular issue tracker), exposing issues, cycles (sprints), and projects as tools.
 
-**Why it's interesting:** Very similar to what we'll build for Jira — a great reference architecture for our Phase 3 work. Study how it handles Linear's GraphQL API vs REST.
+**Why it's interesting:** Similar architecture to Relay's Jira server — shows how to wrap a GraphQL API vs REST.
 
 ---
 
@@ -530,7 +519,7 @@ export function createLLMClient(): LLMClient {
 
 ### 7.3 Jira Cloud Free Tier
 
-Jira Cloud offers a free plan for up to **10 users** with unlimited projects and issues. This is sufficient for our learning project.
+Jira Cloud offers a free plan for up to **10 users** with unlimited projects and issues. This is sufficient for the project.
 
 **Setup steps:**
 1. Create a free Atlassian account at atlassian.com
@@ -609,26 +598,17 @@ The Next.js dev server, MCP server subprocesses, and the Slack Bolt process comb
 - Mention the bot `@assistant create a Jira ticket for...`
 - Bot posts standup summaries on a schedule
 
-### Learning Features (All Phases)
-
-- **MCP Inspector** — a panel showing raw MCP messages (requests/responses) in real time, for learning how the protocol works
-- **Tool playground** — invoke any MCP tool directly with a JSON input form, see the raw output
-- **Concept tooltips** — hovering over terms like "tool call" or "MCP server" shows a brief explanation
-
 ---
 
 ## 9. Phased Build Plan
-
-> **For AI building assistants:** Build one phase fully (including tests) before starting the next. Each phase has a clear "done" definition.
 
 ---
 
 ### Phase 1: Foundation & Chat UI
 
-**Duration:** ~1 week  
-**Goal:** A working Next.js app with a chat UI connected to Groq. No MCP yet. Lay the groundwork for everything that follows.
+**Status:** ✅ Complete
 
-**Concepts introduced:** LLM streaming, OpenAI-compatible API format, provider abstraction
+**Goal:** Next.js app with streaming chat UI connected to Groq, with provider abstraction for switching LLMs via env var.
 
 **What to build:**
 
@@ -666,32 +646,19 @@ The Next.js dev server, MCP server subprocesses, and the Slack Bolt process comb
 
 6. **Provider indicator** — small badge in top-right showing active LLM
 
-**Phase 1 Done When:**
-- [ ] You can type a message and get a streaming response
-- [ ] Changing `LLM_PROVIDER` in `.env.local` switches providers
-- [ ] Unit tests pass for LLM abstraction layer
-- [ ] No hardcoded API keys in source code
-
-**Phase 1 Tests:**
-- Unit: `src/lib/llm/client.test.ts` — factory returns correct client per env var
-- Unit: `src/lib/llm/groq.test.ts` — message format transformation (mocked HTTP)
-- Component: `src/components/chat/ChatWindow.test.tsx` — renders messages, auto-scrolls
-- Integration: Playwright — type message, receive streamed response
-
 ---
 
-### Phase 2: Your First MCP Server
+### Phase 2: Notes MCP Server
 
-**Duration:** ~1 week  
-**Goal:** Build a simple Notes MCP server from scratch. Connect it to the chat. See MCP working end-to-end.
+**Status:** ✅ Complete
 
-**Concepts introduced:** MCP server structure, tool registration, stdio transport, MCP Client, tool call display in UI
+**Goal:** Custom MCP server for in-memory note management, connected to the chat via stdio transport with tool call visualization in the UI.
 
 **What to build:**
 
 1. **Notes MCP Server** — `packages/notes-server/`
 
-   This is a simple in-memory note store. Purpose: learn MCP without the complexity of a real external API.
+   In-memory note store. No external API dependency — a clean isolated MCP server implementation.
 
    ```typescript
    // packages/notes-server/src/index.ts
@@ -754,35 +721,16 @@ The Next.js dev server, MCP server subprocesses, and the Slack Bolt process comb
    - Return tool result to LLM for final response
 
 4. **Tool Call Display component** — `src/components/chat/ToolCallDisplay.tsx`
-   - Shows tool name, arguments (collapsible JSON), result
+   - Shows tool name, arguments (collapsible JSON), and result
    - Styled distinctly from user/assistant messages
-   - Helps you understand what the AI is doing
-
-5. **MCP Inspector panel** — `src/components/mcp/McpInspector.tsx`
-   - Real-time log of raw MCP protocol messages
-   - Toggle-able (off by default, show in dev mode)
-
-**Phase 2 Done When:**
-- [ ] Tell the AI "save a note called 'ideas' with content 'build more MCP servers'"
-- [ ] AI calls `create_note` tool, you see the tool call in the UI
-- [ ] Tell the AI "what notes do I have?" — it calls `list_notes` and responds correctly
-- [ ] Unit tests for MCP Client Manager (mock child process)
-- [ ] MCP Inspector shows raw protocol messages
-
-**Phase 2 Tests:**
-- Unit: `src/lib/mcp/client-manager.test.ts` — tool discovery, tool routing
-- Unit: `packages/notes-server/src/index.test.ts` — each tool in isolation
-- Component: `ToolCallDisplay.test.tsx` — renders tool name, args, result
-- Integration: Playwright — full "save and retrieve a note" flow
 
 ---
 
 ### Phase 3: Jira MCP Server
 
-**Duration:** ~1.5 weeks  
-**Goal:** Build a production-quality Jira MCP server. This is the centerpiece of the project.
+**Status:** ✅ Complete
 
-**Concepts introduced:** Wrapping third-party REST APIs, error handling in MCP tools, resource URIs, authentication patterns
+**Goal:** Custom MCP server wrapping the Jira Cloud REST API, supporting ticket search, creation, status transitions, and comments.
 
 **What to build:**
 
@@ -829,58 +777,27 @@ The Next.js dev server, MCP server subprocesses, and the Slack Bolt process comb
 
 4. **Update Chat UI** — add a Jira sidebar showing active sprint tickets that updates when the AI modifies them.
 
-**Phase 3 Done When:**
-- [ ] "What tickets are in the current sprint?" returns real data from Jira
-- [ ] "Create a bug ticket called 'Login page crash on Safari'" creates a real Jira ticket
-- [ ] "Move PROJ-123 to In Progress" transitions the ticket status
-- [ ] Jira resource URI `jira://ticket/PROJ-123` returns ticket data
-- [ ] Standup prompt generates a human-readable standup
-- [ ] Unit tests for each tool (mocked Jira API via MSW)
-- [ ] Integration test creates and reads back a real ticket (against Jira Cloud test project)
-
-**Phase 3 Tests:**
-- Unit: `packages/jira-server/src/tools/tickets.test.ts` — each tool mocked
-- Unit: `packages/jira-server/src/jira-client.test.ts` — HTTP request formation
-- Integration: Real Jira API test (tagged `@integration`, skipped in CI without credentials)
-- Component: Jira sidebar renders fetched tickets
-
 ---
 
 ### Phase 4: GitHub MCP Server
 
-**Duration:** ~1 week  
-**Goal:** Connect the official GitHub MCP server. Experience using a pre-built server vs building one from scratch.
+**Status:** ✅ Complete
 
-**Concepts introduced:** HTTP+SSE transport, using official MCP servers, combining multiple MCP servers
+**Goal:** Connect the official `@modelcontextprotocol/server-github` package alongside the custom Notes and Jira servers.
 
 **What to build:**
 
-1. **Connect the official GitHub MCP server**
-   ```bash
-   npm install @modelcontextprotocol/server-github
-   ```
-   Configure with a GitHub Personal Access Token. The server runs as a subprocess with HTTP+SSE transport.
-
-2. **Multi-server tool routing** — update the MCP Client Manager to handle tool calls that could come from Notes, Jira, or GitHub servers. Tool names must be unique across servers (document and enforce this).
-
-3. **GitHub dashboard panel** — shows open PRs and issues in a sidebar.
-
-4. **Cross-service feature:** "Summarize PR #42 and create a Jira ticket with the review notes." This uses GitHub (get PR) + Jira (create ticket) in a single conversation turn — a powerful demonstration of MCP's composability.
-
-**Phase 4 Done When:**
-- [ ] "List open PRs in my repo" returns real GitHub data
-- [ ] "Summarize PR #42" returns a meaningful summary
-- [ ] The cross-service PR→Jira flow works end-to-end
-- [ ] All existing tests still pass
+1. Install `@modelcontextprotocol/server-github` at root and wire into MCP Client Manager with `GITHUB_PERSONAL_ACCESS_TOKEN`.
+2. Multi-server tool routing handles tool calls across Notes, Jira, and GitHub simultaneously.
+3. Cross-service capability: "Summarize PR #42 and create a Jira ticket with the review notes" — GitHub + Jira in a single conversation turn.
 
 ---
 
 ### Phase 5: Slack Bot Integration
 
-**Duration:** ~1 week  
-**Goal:** Expose the AI assistant via Slack. Same MCP servers, new interface.
+**Status:** ✅ Complete
 
-**Concepts introduced:** Slack Bolt SDK, Socket Mode, multi-surface AI (web + chat platform)
+**Goal:** Expose the AI assistant via Slack using Bolt SDK with Socket Mode — no public URL required.
 
 **What to build:**
 
@@ -904,18 +821,13 @@ The Next.js dev server, MCP server subprocesses, and the Slack Bolt process comb
 
 5. **Shared backend** — the Slack bot POSTs to the same `/api/chat` endpoint as the web UI. No MCP logic duplication.
 
-**Phase 5 Done When:**
-- [ ] `/ask` command returns an AI response in Slack
-- [ ] Mentioning the bot creates a Jira ticket via natural language
-- [ ] Web UI and Slack bot produce consistent responses
-- [ ] Unit tests for Slack message formatter (block kit output)
-
 ---
 
 ### Phase 6: Polish, Tests & Portfolio
 
-**Duration:** ~1 week  
-**Goal:** Complete test coverage, deploy to Vercel, document for portfolio.
+**Status:** 🔨 In progress
+
+**Goal:** Complete test coverage, deploy to Vercel, finalize documentation.
 
 **What to build:**
 
@@ -1112,7 +1024,7 @@ mcp-learning-app/
 │       └── package.json
 │
 ├── packages/
-│   ├── notes-server/          ← Phase 2: Custom MCP server (learning)
+│   ├── notes-server/          ← Phase 2: Custom MCP server
 │   │   ├── src/
 │   │   │   └── index.ts
 │   │   └── package.json
@@ -1250,4 +1162,4 @@ SLACK_MODE=socket  # or http for production
 
 ---
 
-*Relay — Spec version 1.0 — Built for learning. Built to ship.*
+*Relay — Technical Specification v1.0*

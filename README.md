@@ -1,18 +1,12 @@
 # ⚡ Relay
 
-A hands-on learning application for building with the **Model Context Protocol (MCP)** — the open standard that connects AI language models to real-world tools and data sources. Relay is a chat-driven workspace assistant that integrates with Jira, Slack, and GitHub through natural language.
-
-> Built to learn. Built to ship.
+A chat-driven AI workspace assistant built on the **Model Context Protocol (MCP)** — the open standard that connects AI language models to real-world tools and data sources. Relay integrates with Jira, Slack, and GitHub through natural language, with a streaming chat UI and full tool call visualization.
 
 ---
 
 ## What Is This?
 
-Relay is two things at once:
-
-1. **A working AI assistant** — chat with an LLM that can read and write Jira tickets, browse GitHub pull requests, post to Slack, and manage notes, all through natural language.
-
-2. **A learning project** — every component is built from scratch and explained. If you want to understand how MCP works, how AI tool calling is orchestrated, or how to wire a streaming LLM response into a Next.js app, this codebase shows you exactly how.
+Relay is an AI assistant that connects to your real workspace tools via MCP. Chat with it to read and write Jira tickets, browse GitHub pull requests, post to Slack, and manage notes — all through natural language. It also runs as a Slack bot via Socket Mode, so you can use it directly from Slack without a separate UI.
 
 ---
 
